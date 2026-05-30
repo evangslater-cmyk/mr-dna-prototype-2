@@ -1,0 +1,18 @@
+{
+  "name": "Mr. DNA Widget",
+  "short_name": "Mr. DNA",
+  "start_url": "index.html",
+  "display": "minimal-ui",
+  "display_override": ["window-controls-overlay", "minimal-ui"],
+  "background_color": "#eef7fc",
+  "theme_color": "#ff4757",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/mr_dna_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
