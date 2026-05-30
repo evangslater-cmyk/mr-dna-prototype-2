@@ -1,0 +1,17 @@
+{
+  "name": "Mr. DNA Assistant",
+  "short_name": "Mr. DNA",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#eef7fc",
+  "theme_color": "#ff4757",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://flaticon.com",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
