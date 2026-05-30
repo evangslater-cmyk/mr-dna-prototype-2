@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <title>Mr. DNA</title>
+    <style>
+        body { 
+            font-family: 'Comic Sans MS', sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            width: 300px;
+            height: 300px; 
+            margin: 0; 
+            background: #eef7fc; 
+            color: #2c3e50; 
+            overflow: hidden;
+            box-sizing: border-box;
+            padding: 10px;
+        }
+
+        /* Scaled down DNA Container */
+        .dna-container {
+            position: relative;
+            width: 120px;
+            height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transform: scale(0.85);
+        }
+
+        .float-animation { animation: float 3s infinite ease-in-out; }
+
+        .dna-strand { display: flex; flex-direction: column; gap: 4px; align-items: center; margin-top: 6px; }
+        .bar { width: 35px; height: 5px; background: #bdc3c7; border-radius: 4px; position: relative; display: flex; justify-content: space-between; }
+        .bar:nth-child(odd)::before { content: ''; width: 9px; height: 9px; border-radius: 50%; position: absolute; top: -2px; background: #ff4757; left: -8px; }
+        .bar:nth-child(odd)::after { content: ''; width: 9px; height: 9px; border-radius: 50%; position: absolute; top: -2px; background: #2ed573; right: -8px; }
+        .bar:nth-child(even)::before { content: ''; width: 9px; height: 9px; border-radius: 50%; position: absolute; top: -2px; background: #1e90ff; left: -8px; }
+        .bar:nth-child(even)::after { content: ''; width: 9px; height: 9px; border-radius: 50%; position: absolute; top: -2px; background: #ffa502; right: -8px; }
+
+        .dna-face { width: 60px; height: 60px; background: #fff; border: 3px solid #2c3e50; border-radius: 50%; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .eyes { display: flex; gap: 6px; margin-bottom: 2px; }
+        .eye { width: 10px; height: 14px; background: white; border: 2px solid #2c3e50; border-radius: 50%; position: relative; }
+        .pupil { width: 4px; height: 4px; background: #2c3e50; border-radius: 50%; position: absolute; bottom: 2px; left: 2px; }
+        .mouth { width: 16px; height: 8px; border: 2px solid #2c3e50; border-top: none; border-radius: 0 0 10px 10px; background: #ff6b81; }
+
+        /* Animation States */
+        .speaking .mouth { animation: talkMouth 0.14s infinite alternate; border-top: 2px solid #2c3e50 !important; border-radius: 50% !important; }
+        .speaking .dna-strand .bar { transform: scaleX(1.1) rotate(4deg); }
+        .listening .pupil { transform: translateY(-2px) scale(1.1); }
+        .listening .mouth { width: 9px; height: 9px; border: 2px solid #2c3e50; border-radius: 50%; background: transparent; }
+
+        @keyframes float { 0%, 100% { transform: translateY(0px) rotate(0deg) scale(0.85); } 50% { transform: translateY(-8px) rotate(1.5deg) scale(0.85); } }
+        @keyframes talkMouth { 0% { height: 2px; width: 12px; } 100% { height: 12px; width: 12px; background: #70a1ff; } }
+
+        /* Dino Stampede System */
+        .dino-habitat { position: absolute; bottom: 0; left: 0; width: 100%; height: 80px; overflow: hidden; pointer-events: none; z-index: 5; }
+        .dino { position: absolute; font-size: 30px; bottom: 5px; left: -50px; animation: stompAcross 3s linear forwards; }
+        @keyframes stompAcross { 0% { left: -50px; } 100% { left: 110%; } }
+
+        /* Mini Controls */
+        button { padding: 10px 20px; font-size: 13px; border-radius: 20px; border: none; background: #ff4757; color: white; cursor: pointer; font-weight: bold; box-shadow: 0 4px 8px rgba(255, 71, 87, 0.3); font-family: inherit; margin-top: 4px; z-index: 15; }
+        #status { margin: 6px 0 0 0; color: #7f8c8d; font-weight: bold; text-align: center; max-width: 90%; font-size: 11px; z-index: 15; line-height: 1.3; height: 32px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    </style>
+</head>
+<body>
+
+    <div id="dnaCharacter" class="dna-container float-animation">
+        <div class="dna-face">
+            <div class="eyes">
+                <div class="eye"><div class="pupil"></div></div>
+                <div class="eye"><div class="pupil"></div></div>
+            </div>
+            <div id="dnaMouth" class="mouth"></div>
+        </div>
+        <div class="dna-strand">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+    </div>
+
+    <button id="micBtn">Start Assistant</button>
+    <p id="status">Ready...</p>
+    <div id="dinoHabitat" class="dino-habitat"></div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(err => {}); });
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+        }
+        
+        const micBtn = document.getElementById('micBtn');
+        const statusText = document.getElementById('status');
+        const dnaCharacter = document.getElementById('dnaCharacter');
+        const dinoHabitat = document.getElementById('dinoHabitat');
+
+        let isListeningToWakeWord = false;
+        let audioContext, analyser, stream;
+        window.utterances = [];
+
+        micBtn.addEventListener('click', async () => {
+            micBtn.style.display = "none"; 
+            startWakeWordDetection();
+        });
+
+        async function startWakeWordDetection() {
+            isListeningToWakeWord = true;
+            statusText.innerText = "Say something to Mr. DNA!";
+            dnaCharacter.className = "dna-container float-animation"; 
+
+            if (!audioContext) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioContext.createAnalyser();
+                    const source = audioContext.createMediaStreamSource(stream);
+                    source.connect(analyser);
+                    analyser.fftSize = 256;
+                } catch (err) { statusText.innerText = "Mic error."; return; }
+            }
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            function checkAudioLoop() {
+                if (!isListeningToWakeWord) return;
+                analyser.getByteFrequencyData(dataArray);
+                let volumeSum = 0;
+                for(let i = 0; i < bufferLength; i++) { volumeSum += dataArray[i]; }
+                let averageVolume = volumeSum / bufferLength;
+
+                if (averageVolume > 45) { 
+                    isListeningToWakeWord = false; 
+                    triggerFullRecognition();
+                    return;
+                }
+                requestAnimationFrame(checkAudioLoop);
+            }
+            checkAudioLoop();
+        }
+
+        function triggerFullRecognition() {
+            if (!recognition) { restartLoop(); return; }
+            statusText.innerText = "Listening...";
+            dnaCharacter.className = "dna-container float-animation listening";
+            try { recognition.start(); } catch(e) { restartLoop(); }
+        }
+
+        if (recognition) {
+            recognition.onresult = async (event) => {
+                const userText = event.results[0][0].transcript;
+                statusText.innerText = `You: ${userText}`;
+                const aiResponse = await processWithAI(userText);
+                speak(aiResponse);
+            };
+            recognition.onerror = () => { restartLoop(); };
+            recognition.onend = () => { restartLoop(); };
+        }
+
+        function restartLoop() {
+            if (!dnaCharacter.classList.contains("speaking") && !isListeningToWakeWord) {
+                startWakeWordDetection();
+            }
+        }
+
+        function spawnDinosaur() {
+            const dinos = ['🦖', '🦕', '🐊', '🦅']; 
+            const chosen = dinos[Math.floor(Math.random() * dinos.length)];
+            const dinoElement = document.createElement('div');
+            dinoElement.className = 'dino';
+            dinoElement.innerText = chosen;
+            if(chosen === '🦅') dinoElement.style.bottom = '45px';
+            dinoHabitat.appendChild(dinoElement);
+            setTimeout(() => { dinoElement.remove(); }, 3000);
+        }
+
+        async function processWithAI(text) {
+            statusText.innerText = "Thinking...";
+            if(text.toLowerCase().includes('dinosaur') || text.toLowerCase().includes('dino')) { spawnDinosaur(); }
+
+            try {
+                const response = await fetch('https://openai.com', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer YOUR_OPENAI_API_KEY'
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4o-mini",
+                        messages: [
+                            { role: "system", content: "You are Mr. DNA from Jurassic Park. Use southern charm, explain science simply, keep answers under 2 short sentences." },
